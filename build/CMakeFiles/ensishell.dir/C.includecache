@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/src/ensishell.c
+stdio.h
+-
+stdlib.h
+-
+variante.h
+/user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/src/variante.h
+readcmd.h
+/user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/src/readcmd.h
+libguile.h
+-
+
+/user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/src/readcmd.h
+readline/readline.h
+-
+readline/history.h
+-
+
+/user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/src/variante.h
+

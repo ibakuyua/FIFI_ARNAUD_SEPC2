@@ -1,0 +1,1 @@
+/usr/bin/cc  -g -pthread -Wall -Werror -std=gnu99    CMakeFiles/ensishell.dir/src/readcmd.c.o CMakeFiles/ensishell.dir/src/ensishell.c.o  -o ensishell -rdynamic -lreadline -lhistory -lguile -lgmp -lcrypt -lm /usr/lib64/libltdl.so.7 

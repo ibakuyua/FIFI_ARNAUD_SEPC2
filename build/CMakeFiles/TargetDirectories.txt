@@ -1,0 +1,2 @@
+/user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/build/CMakeFiles/check.dir
+/user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/build/CMakeFiles/ensishell.dir

@@ -1,0 +1,72 @@
+Start testing: Apr 01 19:17 CEST
+----------------------------------------------------------
+1/1 Testing: UnitShellTests
+1/1 Test: UnitShellTests
+Command: "/user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/tests/allShellTests.rb"
+Directory: /user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/build
+"UnitShellTests" start time: Apr 01 19:17 CEST
+Output:
+----------------------------------------------------------
+Loaded suite /user/1/gomesf/Cours_2A/SEPC/TP2_Shell/ensimag-shell/tests/allShellTests
+Started
+.FFFFFFFFF
+Finished in 9.620976 seconds.
+
+  1) Failure:
+test_varianteNumber(Test0Prompt) [../tests/testPrompt.rb:42]:
+Pas d'affichage donnant la variante.
+<nil> expected to be != to
+<nil>.
+
+  2) Failure:
+test_all(Test1ForkExec)
+    [../tests/testForkExec.rb:38:in `test_seq'
+     ../tests/testForkExec.rb:48:in `test_all']:
+Sortie incohérente pour 'seq 0 3'.
+<nil> expected to not be nil.
+
+  3) Failure:
+test_printf(Test1ForkExec) [../tests/testForkExec.rb:44]:
+Sortie incohérente pour 'seq 0 3'.
+<nil> expected to not be nil.
+
+  4) Failure:
+test_seq(Test1ForkExec) [../tests/testForkExec.rb:38]:
+Sortie incohérente pour 'seq 0 3'.
+<nil> expected to not be nil.
+
+  5) Failure:
+test_inout(Test2InOut) [../tests/testInOut.rb:27]:
+sortie incohérente pour ls -l.
+<nil> expected to not be nil.
+
+  6) Failure:
+test_inoutpipe(Test2InOut) [../tests/testInOut.rb:50]:
+cat titiExpect.txt titiExpect.txt n'a pas rendu deux fois le même entier à la suite.
+<nil> expected to not be nil.
+
+  7) Failure:
+test_parallelisme(Test2InOut) [../tests/testInOut.rb:63]:
+le | ne semble pas parallèle.
+<nil> expected to not be nil.
+
+  8) Failure:
+test_pipe(Test2InOut) [../tests/testInOut.rb:42]:
+sortie incohérente pour ls | wc -l.
+<nil> expected to not be nil.
+
+  9) Failure:
+test_inout(Test3Jobs) [../tests/testJobs.rb:25]:
+le ls n'a pas afficher la taille du fichier.
+<nil> expected to not be nil.
+
+10 tests, 10 assertions, 9 failures, 0 errors
+<end of output>
+Test time =  10.06 sec
+----------------------------------------------------------
+Test Failed.
+"UnitShellTests" end time: Apr 01 19:17 CEST
+"UnitShellTests" time elapsed: 00:00:10
+----------------------------------------------------------
+
+End testing: Apr 01 19:17 CEST
