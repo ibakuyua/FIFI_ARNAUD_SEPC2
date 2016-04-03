@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "variante.h"
 #include "readcmd.h"
@@ -34,7 +36,6 @@ int executer(char *line)
 	 * pipe and i/o redirection are not required.
 	 */
   
-        
 	struct cmdline *l;
         /* parsecmd free line and set it up to 0 */
 	l = parsecmd( & line);
@@ -52,15 +53,30 @@ int executer(char *line)
 
 	if (l->in) printf("in: %s\n", l->in);
 	if (l->out) printf("out: %s\n", l->out);
-	if (l->bg) printf("background (&)\n");
+	
 	
 	//question1
+        int status;
 	pid_t pidNomProg = fork();
+	if (pidNomProg == -1) {
+	  perror("fork");
+	  exit(EXIT_FAILURE);
+	}
+
 	if (pidNomProg == 0) {
 	  //processus fils
 	  execvp(l->seq[0][0], l->seq[0]);
+	} else {
+	  //question 3
+	  if (l->bg) {
+	    printf("background (&)\n");
+	    return 0;
+	  }
+	  //question 2, le processus père attend
+	  waitpid(pidNomProg, &status,0);
 	}
-
+	
+	
 	/* Remove this line when using parsecmd as it will free it */
 	free(line);
 	
@@ -125,6 +141,7 @@ int main() {
                 }
 #endif
 
+		//Boucler sur les pipes
 		executer(line);
 
 		/* Display each command of the pipe 
