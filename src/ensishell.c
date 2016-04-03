@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "variante.h"
 #include "readcmd.h"
@@ -27,6 +28,7 @@
 #include <libguile.h>
 
 void terminate(char *line);
+int execJobs();
 
 int executer(char *line)
 {
@@ -35,57 +37,63 @@ int executer(char *line)
 	 * parsecmd, then fork+execvp, for a single command.
 	 * pipe and i/o redirection are not required.
 	 */
-  
+
 	struct cmdline *l;
-        /* parsecmd free line and set it up to 0 */
+	/* parsecmd free line and set it up to 0 */
 	l = parsecmd( & line);
 
 	/* If input stream closed, normal termination */
 	if (!l) {
-	  terminate(0);
+		terminate(0);
 	}
-		
+
 	if (l->err) {
-	  /* Syntax error, read another command */
-	  printf("error: %s\n", l->err);
-	  return 0;
+		/* Syntax error, read another command */
+		printf("error: %s\n", l->err);
+		return 0;
 	}
 
 	if (l->in) printf("in: %s\n", l->in);
 	if (l->out) printf("out: %s\n", l->out);
-	
-	
+
+
 	//question1
-        int status;
+	int status;
 	pid_t pidNomProg = fork();
 	if (pidNomProg == -1) {
-	  perror("fork");
-	  exit(EXIT_FAILURE);
+		perror("fork error");
+		exit(EXIT_FAILURE);
 	}
 
 	if (pidNomProg == 0) {
-	  //processus fils
-	  execvp(l->seq[0][0], l->seq[0]);
+		//question 4 : Cas spécial du jobs
+		if(strncmp(l->seq[0][0],"jobs",strlen(l->seq[0][0]))==0){ 
+			execJobs();
+		}else{
+			//processus fils
+			execvp(l->seq[0][0], l->seq[0]);
+		}
 	} else {
-	  //question 3
-	  if (l->bg) {
-	    printf("background (&)\n");
-	    return 0;
-	  }
-	  //question 2, le processus père attend
-	  waitpid(pidNomProg, &status,0);
+		//question 3
+		if (l->bg) {
+			printf("background (&)\n");
+			return 0;
+		}
+		//question 2, le processus père attend
+		waitpid(pidNomProg, &status,0);
 	}
-	
-	
+
+
+
 	/* Remove this line when using parsecmd as it will free it */
 	free(line);
-	
+
 	return 0;
 }
 
 SCM executer_wrapper(SCM x)
 {
-        return scm_from_int(executer(scm_to_locale_stringn(x, 0)));
+	return scm_from_int(executer(scm_to_locale_stringn(x, 0)));
 }
 #endif
 
@@ -96,23 +104,27 @@ void terminate(char *line) {
 	clear_history();
 #endif
 	if (line)
-	  free(line);
+		free(line);
 	printf("exit\n");
 	exit(0);
 }
 
+int execJobs() {
+	return 0;
+}
+
 
 int main() {
-        printf("Variante %d: %s\n", VARIANTE, VARIANTE_STRING);
+	printf("Variante %d: %s\n", VARIANTE, VARIANTE_STRING);
 
 #ifdef USE_GUILE
-        scm_init_guile();
-        /* register "executer" function in scheme */
-        scm_c_define_gsubr("executer", 1, 0, 0, executer_wrapper);
+	scm_init_guile();
+	/* register "executer" function in scheme */
+	scm_c_define_gsubr("executer", 1, 0, 0, executer_wrapper);
 #endif
 
 	while (1) {
-	  
+
 		char *line=0;
 		//	int i, j;
 		char *prompt = "ensishell>";
@@ -137,23 +149,23 @@ int main() {
 			sprintf(catchligne, "(catch #t (lambda () %s) (lambda (key . parameters) (display \"mauvaise expression/bug en scheme\n\")))", line);
 			scm_eval_string(scm_from_locale_string(catchligne));
 			free(line);
-                        continue;
-                }
+			continue;
+		}
 #endif
 
 		//Boucler sur les pipes
 		executer(line);
 
 		/* Display each command of the pipe 
-		for (i=0; l->seq[i]!=0; i++) {
-			char **cmd = l->seq[i];
-			printf("seq[%d]: ", i);
-                        for (j=0; cmd[j]!=0; j++) {
-                                printf("'%s' ", cmd[j]);
-                        }
-			printf("\n");
-			}*/
-		
+		   for (i=0; l->seq[i]!=0; i++) {
+		   char **cmd = l->seq[i];
+		   printf("seq[%d]: ", i);
+		   for (j=0; cmd[j]!=0; j++) {
+		   printf("'%s' ", cmd[j]);
+		   }
+		   printf("\n");
+		   }*/
+
 	}
 
 }
