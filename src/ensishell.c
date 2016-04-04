@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "variante.h"
 #include "readcmd.h"
@@ -36,6 +37,9 @@ typedef struct listeProc{
 	struct listeProc *suiv;
 } listeProc;
 
+// FDS utilisé pour les in&out
+int fds[2];
+
 
 //******************************************************************
 //
@@ -54,6 +58,10 @@ void liberer(listeProc *list);
 // Utilisable par toutes les fonctions
 listeProc *procBG;
 
+// Execution d'une seule commande
+int executerCMD(struct cmdline *l, int i, int in, int out);
+
+// int i : correspond à la commande numéro i des pipes (probables)
 int executer(char *line)
 {
 	/* Insert your code to execute the command line
@@ -65,7 +73,6 @@ int executer(char *line)
 	struct cmdline *l;
 	/* parsecmd free line and set it up to 0 */
 	l = parsecmd( & line);
-
 	/* If input stream closed, normal termination */
 	if (!l) {
 		terminate(0);
@@ -80,65 +87,120 @@ int executer(char *line)
 	if (l->in) printf("in: %s\n", l->in);
 	if (l->out) printf("out: %s\n", l->out);
 
+	/* Display each command of the pipe */
+	/*
+	for (int i=0; l->seq[i]!=0; i++) {
+		char **cmd = l->seq[i];
+		printf("seq[%d]: ", i);
+		for (int j=0; cmd[j]!=0; j++) {
+			printf("'%s' ", cmd[j]);
 
-	//question1
-	int status;
+		}
+		printf("\n");
+	}*/
+
+	/* Execution */
+	// Initialisation
 	int fds[2];
-	pipe(fds);
-	pid_t pidNomProg = fork();
-	if (pidNomProg == -1) {
+	// Question 6 //
+	int in = (l->in)?open(l->in, O_RDONLY):0;
+	int out;
+	for (int i=0; l->seq[i]!=0; i++) {
+		// Construction du pipe
+		if (pipe(fds)==-1){
+			perror("pipe");
+			return (EXIT_FAILURE);
+		}
+		// Pipe or not ?
+		if (l->seq[i+1] != NULL){
+			// S'il y a un pipe
+			out = fds[1];
+		}else{
+			out = (l->out)?open(l->out, O_WRONLY | O_CREAT | O_TRUNC):1;
+		}
+		// Execution de la commande i
+		if (executerCMD(l,i,in, out)==EXIT_FAILURE){
+			return EXIT_FAILURE;
+		}
+
+		in = fds[0];
+
+	}
+	return EXIT_SUCCESS;
+}
+
+int executerCMD(struct cmdline *l, int i, int in, int out){
+
+	//question 4 : Cas spécial du jobs
+	//Test préliminaire si l'utilisateur n'a rien taper
+	if(l->seq[i]==NULL){
+		return (EXIT_SUCCESS);
+	}
+	if(strncmp(l->seq[i][0],"jobs",strlen(l->seq[i][0])) == 0){ 
+		displayBG();
+		return (EXIT_SUCCESS);
+	}
+
+	pid_t pidProg = fork();
+	if (pidProg == -1) {
 		perror("fork");
 		exit(EXIT_FAILURE);
 	}
 
-	if (pidNomProg == 0) {
-	  if (l->seq[1] != NULL) {
-	    dup2(fds[1], 1);
-	    close(fds[1]);
-	  }
-		//question 4 : Cas spécial du jobs
-		if(strncmp(l->seq[0][0],"jobs",strlen(l->seq[0][0])) == 0){ 
-			displayBG();
-		}else{
-			//processus fils
-			if (execvp(l->seq[0][0], l->seq[0]) == -1){
-				perror("execvp");
-				return(EXIT_FAILURE);
+	if (pidProg == 0) {		
+		//processus fils
+		if (in != 0){
+			if(dup2(in, 0) == -1){
+				perror("dup2");
+				return (EXIT_FAILURE);
 			}
+			close(in);
+		}
+		if (out != 1){
+			if(dup2(out, 1) == -1){
+				perror("dup2");
+				return (EXIT_FAILURE);
+			}
+			close(out);
+		}
+
+		// execution
+		if (execvp(l->seq[i][0],l->seq[i]) == -1){
+			// Si la commande n'existe pas ou autre
+			perror("execvp");
+			printf("Commande %s non trouvée\n",l->seq[i][0]);
+			return(EXIT_FAILURE);
 		}
 	} else {
+		if (in != 0){
+			close(in);
+		}
+		if (out != 1){
+			close(out);
+		}
 		//question 3
 		if (l->bg) {
-			printf("background %s (&)\n",l->seq[0][0]);
+			printf("background %s (&)\n",l->seq[i][0]);
 			// Insertion en tête
 			listeProc *buf = malloc(sizeof(listeProc));
 			if (buf == NULL){
 				perror("malloc");
 				return (EXIT_FAILURE);
 			}
-			buf -> PID = pidNomProg;
-			buf->nom = malloc(strlen(l->seq[0][0])+1);
+			buf -> PID = pidProg;
+			buf->nom = malloc(strlen(l->seq[i][0])+1);
 			if (buf->nom == NULL){
 				perror("malloc");
 				return (EXIT_FAILURE);
 			}
-			strcpy(buf->nom, l->seq[0][0]); 
+			strcpy(buf->nom, l->seq[i][0]); 
 			buf -> suiv = procBG;
 			procBG = buf;
 			return (EXIT_SUCCESS);
 		}
-		
-		if (l->seq[1] != NULL) {
-		  pid_t pidPipe = fork();
-		  if (pidPipe == 0) {
-		    dup2(fds[0], 0);
-		    close(fds[0]);
-		    execvp(l->seq[1][0], l->seq[1]);
-		  }
-		}
 
 		//question 2, le processus père attend
-		if (waitpid(pidNomProg, &status,0) == -1){
+		if (waitpid(pidProg, NULL,0) == -1){
 			perror("waitpid");
 			return(EXIT_FAILURE);
 		}
@@ -170,13 +232,32 @@ void terminate(char *line) {
 }
 
 void displayBG() {
-	printf("\n");
 	listeProc *cour = procBG;
+	listeProc *pred = NULL;
 	while (cour->suiv != NULL){
-		printf("\nPID : %d \t %s",cour->PID,cour->nom);
-		cour = cour->suiv;
+		// Cas où le processus est terminé
+		// On ne l'affiche pas et on le supprime de la liste
+		if (waitpid(cour->PID, NULL,WNOHANG) != 0){
+			listeProc *succ = cour->suiv;
+			if(pred != NULL){
+				pred->suiv = succ;
+			}
+			// Cas où on enlève le premier élément
+			else{
+				procBG = cour->suiv;
+			}
+			free(cour->nom);
+			free(cour);
+			cour = succ;
+			
+		}
+		else{
+			printf("PID : %d \t %s\n",cour->PID,cour->nom);
+			pred = cour;
+			cour = cour->suiv;
+		}
+
 	}
-	printf("\n");
 }
 
 void liberer(listeProc *list){
@@ -219,7 +300,6 @@ int main() {
 	while (1) {
 
 		char *line=0;
-		//	int i, j;
 		char *prompt = "ensishell>";
 
 		/* Readline use some internal memory structure that
@@ -246,18 +326,9 @@ int main() {
 		}
 #endif
 
-		//Boucler sur les pipes
-		executer(line);
-
-		/* Display each command of the pipe 
-		   for (i=0; l->seq[i]!=0; i++) {
-		   char **cmd = l->seq[i];
-		   printf("seq[%d]: ", i);
-		   for (j=0; cmd[j]!=0; j++) {
-		   printf("'%s' ", cmd[j]);
-		   }
-		   printf("\n");
-		   }*/
+		if(executer(line)==EXIT_FAILURE){
+			exit(EXIT_FAILURE);
+		}		
 
 	}
 
