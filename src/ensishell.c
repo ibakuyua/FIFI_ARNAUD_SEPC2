@@ -59,6 +59,8 @@ int executer(char *line)
 
 	//question1
 	int status;
+	int fds[2];
+	pipe(fds);
 	pid_t pidNomProg = fork();
 	if (pidNomProg == -1) {
 		perror("fork error");
@@ -66,6 +68,10 @@ int executer(char *line)
 	}
 
 	if (pidNomProg == 0) {
+	  if (l->seq[1] != NULL) {
+	    dup2(fds[1], 1);
+	    close(fds[1]);
+	  }
 		//question 4 : Cas spécial du jobs
 		if(strncmp(l->seq[0][0],"jobs",strlen(l->seq[0][0]))==0){ 
 			execJobs();
@@ -79,6 +85,16 @@ int executer(char *line)
 			printf("background (&)\n");
 			return 0;
 		}
+		
+		if (l->seq[1] != NULL) {
+		  pid_t pidPipe = fork();
+		  if (pidPipe == 0) {
+		    dup2(fds[0], 0);
+		    close(fds[0]);
+		    execvp(l->seq[1][0], l->seq[1]);
+		  }
+		}
+
 		//question 2, le processus père attend
 		waitpid(pidNomProg, &status,0);
 	}
