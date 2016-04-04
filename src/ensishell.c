@@ -11,11 +11,13 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <wordexp.h>
+#include <sys/types.h>
 
 #include "variante.h"
 #include "readcmd.h"
 
-#ifndef VARIANTE
+#ifndef VARIANTE 
 #error "Variante non défini !!"
 #endif
 
@@ -130,15 +132,22 @@ int executer(char *line)
 }
 
 int executerCMD(struct cmdline *l, int i, int in, int out){
-
-	//question 4 : Cas spécial du jobs
-	//Test préliminaire si l'utilisateur n'a rien taper
+    	//question 4 : Cas spécial du jobs
+	//Test préliminaire si l'utilisateur n'a rien tapé
 	if(l->seq[i]==NULL){
 		return (EXIT_SUCCESS);
 	}
 	if(strncmp(l->seq[i][0],"jobs",strlen(l->seq[i][0])) == 0){ 
 		displayBG();
 		return (EXIT_SUCCESS);
+	}
+
+	//Variante des jokers et environnements
+	//Redéfinition de l avec wordexp
+	wordexp_t p;
+        wordexp(l->seq[i][0], &p, 0);
+	for (int j=1; l->seq[i][j] != NULL; j++) {
+	  wordexp(l->seq[i][j], &p, WRDE_APPEND);
 	}
 
 	pid_t pidProg = fork();
@@ -165,13 +174,15 @@ int executerCMD(struct cmdline *l, int i, int in, int out){
 		}
 
 		// execution
-		if (execvp(l->seq[i][0],l->seq[i]) == -1){
+		if (execvp(p.we_wordv[0], p.we_wordv) == -1){
 			// Si la commande n'existe pas ou autre
 			perror("execvp");
 			printf("Commande %s non trouvée\n",l->seq[i][0]);
 			return(EXIT_FAILURE);
 		}
 	} else {
+            	wordfree(&p);
+
 		if (in != 0){
 			close(in);
 		}
