@@ -116,7 +116,7 @@ int executer(char *line)
 			// S'il y a un pipe
 			out = fds[1];
 		}else{
-			out = (l->out)?open(l->out, O_WRONLY | O_CREAT | O_TRUNC):1;
+			out = (l->out)?open(l->out, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG | S_IRWXO):1;
 		}
 		// Execution de la commande i
 		if (executerCMD(l,i,in, out)==EXIT_FAILURE){
@@ -200,9 +200,11 @@ int executerCMD(struct cmdline *l, int i, int in, int out){
 		}
 
 		//question 2, le processus père attend
-		if (waitpid(pidProg, NULL,0) == -1){
-			perror("waitpid");
-			return(EXIT_FAILURE);
+		if (l->seq[i+1] == NULL){
+			if (waitpid(pidProg, NULL,0) == -1){
+				perror("waitpid");
+				return(EXIT_FAILURE);
+			}
 		}
 	}
 
