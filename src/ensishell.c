@@ -27,8 +27,32 @@
 #if USE_GUILE == 1
 #include <libguile.h>
 
+//******************************************************************
+//
+// STRUCTURE DE LISTE DES PROCESSUS APPELES //
+typedef struct listeProc{
+	int PID;
+	char *nom;
+	struct listeProc *suiv;
+} listeProc;
+
+
+//******************************************************************
+//
+// IMPLEMENTATION DU ENSISHELL //
+
 void terminate(char *line);
-int execJobs();
+
+// Permet d'afficher la liste des processus en cours
+// (Parcours de liste des processus demandés + suppression des processus terminé)  
+void displayBG();
+
+// Permet de libérer les éléments de la liste
+void liberer(listeProc *list);
+
+// Initialiser dans le main
+// Utilisable par toutes les fonctions
+listeProc *procBG;
 
 int executer(char *line)
 {
@@ -61,34 +85,53 @@ int executer(char *line)
 	int status;
 	pid_t pidNomProg = fork();
 	if (pidNomProg == -1) {
-		perror("fork error");
+		perror("fork");
 		exit(EXIT_FAILURE);
 	}
 
 	if (pidNomProg == 0) {
 		//question 4 : Cas spécial du jobs
-		if(strncmp(l->seq[0][0],"jobs",strlen(l->seq[0][0]))==0){ 
-			execJobs();
+		if(strncmp(l->seq[0][0],"jobs",strlen(l->seq[0][0])) == 0){ 
+			displayBG();
 		}else{
 			//processus fils
-			execvp(l->seq[0][0], l->seq[0]);
+			if (execvp(l->seq[0][0], l->seq[0]) == -1){
+				perror("execvp");
+				return(EXIT_FAILURE);
+			}
 		}
 	} else {
 		//question 3
 		if (l->bg) {
-			printf("background (&)\n");
-			return 0;
+			printf("background %s (&)\n",l->seq[0][0]);
+			// Insertion en tête
+			listeProc *buf = malloc(sizeof(listeProc));
+			if (buf == NULL){
+				perror("malloc");
+				return (EXIT_FAILURE);
+			}
+			buf -> PID = pidNomProg;
+			buf->nom = malloc(strlen(l->seq[0][0])+1);
+			if (buf->nom == NULL){
+				perror("malloc");
+				return (EXIT_FAILURE);
+			}
+			strcpy(buf->nom, l->seq[0][0]); 
+			buf -> suiv = procBG;
+			procBG = buf;
+			return (EXIT_SUCCESS);
 		}
 		//question 2, le processus père attend
-		waitpid(pidNomProg, &status,0);
+		if (waitpid(pidNomProg, &status,0) == -1){
+			perror("waitpid");
+			return(EXIT_FAILURE);
+		}
 	}
 
-
-
 	/* Remove this line when using parsecmd as it will free it */
-	free(line);
+	//free(line);
 
-	return 0;
+	return (EXIT_SUCCESS);
 }
 
 SCM executer_wrapper(SCM x)
@@ -97,6 +140,7 @@ SCM executer_wrapper(SCM x)
 }
 #endif
 
+// IMPLEMENTATION DES PROTOTYPES //
 
 void terminate(char *line) {
 #ifdef USE_GNU_READLINE
@@ -109,10 +153,31 @@ void terminate(char *line) {
 	exit(0);
 }
 
-int execJobs() {
-	return 0;
+void displayBG() {
+	printf("\n");
+	listeProc *cour = procBG;
+	while (cour->suiv != NULL){
+		printf("\nPID : %d \t %s",cour->PID,cour->nom);
+		cour = cour->suiv;
+	}
+	printf("\n");
 }
 
+void liberer(listeProc *list){
+	listeProc *cour = list;
+	listeProc *succ = cour->suiv;
+	while (succ != NULL){
+		free(cour->nom);
+		free(cour);
+		cour = succ;
+		succ = cour->suiv;
+
+	}
+}
+
+/////////////////////////////////////////////////////////////////
+//				MAIN
+/////////////////////////////////////////////////////////////////
 
 int main() {
 	printf("Variante %d: %s\n", VARIANTE, VARIANTE_STRING);
@@ -122,6 +187,18 @@ int main() {
 	/* register "executer" function in scheme */
 	scm_c_define_gsubr("executer", 1, 0, 0, executer_wrapper);
 #endif
+
+	// Initialisation de la liste des processus en background//
+	procBG = malloc(sizeof(listeProc));
+	if (procBG == NULL){
+		perror("malloc");
+		return (EXIT_FAILURE);
+	}
+	procBG->PID = -1;
+	procBG->nom = NULL;
+	procBG->suiv = NULL;
+
+	// Lecture des commandes utilisateurs
 
 	while (1) {
 
@@ -168,4 +245,6 @@ int main() {
 
 	}
 
+	// Libération de la liste
+	liberer(procBG);
 }
